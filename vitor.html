@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shopee SPX | Relatório Executivo SLA Bancada</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Chart.js DataLabels Plugin CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #0B0F19;
+      color: #E2E8F0;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .card-panel {
+      background: #141B2D;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 1rem;
+      box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+    }
+    .kpi-card {
+      background: #141B2D;
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 1rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+    }
+    .kpi-orange::before { background: #EE4D2D; }
+    .kpi-green::before { background: #10B981; }
+    .kpi-red::before { background: #EF4444; }
+    .kpi-blue::before { background: #3B82F6; }
+
+    select {
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 0.6rem center;
+      background-size: 1em;
+      padding-right: 2rem !important;
+    }
+
+    @media print {
+      .no-print { display: none !important; }
+      body { background-color: #0B0F19 !important; }
+    }
+  </style>
+</head>
+<body class="min-h-screen p-4 md:p-6 lg:p-8">
+
+  <!-- CABEÇALHO DO RELATÓRIO -->
+  <header class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-6 mb-6 border-b border-slate-800">
+    <div class="flex items-center gap-3.5">
+      <div class="w-12 h-12 rounded-xl bg-[#EE4D2D] flex items-center justify-center font-black text-white text-2xl tracking-tighter shadow-lg shadow-orange-950/50">
+        SPX
+      </div>
+      <div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <h1 class="text-xl md:text-2xl font-black text-white tracking-tight">Relatório Operacional • SLA de Bancada</h1>
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Modo Report Estático</span>
+        </div>
+        <p class="text-xs md:text-sm text-slate-400 mt-0.5">SPX Express • Hub RJ (Itaboraí) • Monitorização Diária e Rastreio de Ofensores</p>
+      </div>
+    </div>
+
+    <!-- ÁREA DE FILTROS TOTALMENTE FUNCIONAIS -->
+    <div class="flex flex-wrap items-center gap-3 no-print">
+      <!-- Filtro de Período -->
+      <div class="flex items-center bg-[#141B2D] border border-slate-700/80 rounded-xl px-3 py-2 text-xs">
+        <label for="filtroData" class="text-slate-400 font-semibold mr-2">Período:</label>
+        <select id="filtroData" onchange="aplicarFiltros()" class="bg-transparent text-white font-medium focus:outline-none cursor-pointer">
+          <option value="todos" class="bg-slate-900">Todos (15/09 a 19/09)</option>
+          <option value="15/09" class="bg-slate-900">15 de Setembro (15/09)</option>
+          <option value="16/09" class="bg-slate-900">16 de Setembro (16/09)</option>
+          <option value="17/09" class="bg-slate-900">17 de Setembro (17/09)</option>
+          <option value="18/09" class="bg-slate-900">18 de Setembro (18/09)</option>
+          <option value="19/09" class="bg-slate-900">19 de Setembro (19/09)</option>
+        </select>
+      </div>
+
+      <!-- Filtro de Condição -->
+      <div class="flex items-center bg-[#141B2D] border border-slate-700/80 rounded-xl px-3 py-2 text-xs">
+        <label for="filtroCondicao" class="text-slate-400 font-semibold mr-2">Condição:</label>
+        <select id="filtroCondicao" onchange="aplicarFiltros()" class="bg-transparent text-white font-medium focus:outline-none cursor-pointer">
+          <option value="todos" class="bg-slate-900">Todas as Bancadas</option>
+          <option value="OK" class="bg-slate-900">Apenas OK (&le; 10 min)</option>
+          <option value="NOK" class="bg-slate-900">Apenas NOK (&gt; 10 min)</option>
+        </select>
+      </div>
+
+      <!-- Botão Imprimir / PDF -->
+      <button onclick="window.print()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold rounded-xl text-slate-200 transition-colors flex items-center gap-1.5 shadow-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4H7v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+        Exportar Relatório / PDF
+      </button>
+
+      <button onclick="resetarFiltros()" class="px-3 py-2 bg-slate-800/80 hover:bg-slate-700 border border-slate-700/80 text-xs font-semibold rounded-xl text-slate-300 transition-colors">
+        Repor
+      </button>
+    </div>
+  </header>
+
+  <!-- CARTOES KPI COM VALORES EM EVIDÊNCIA -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <!-- KPI 1 -->
+    <div class="kpi-card kpi-orange p-5">
+      <div class="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
+        <span>Tempo Médio Bancada</span>
+        <span class="text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded font-bold text-[11px]">Meta: 10:00</span>
+      </div>
+      <div class="flex items-baseline gap-2.5">
+        <span id="kpiTempoMedio" class="text-3xl lg:text-4xl font-extrabold text-white tracking-tight">08:32</span>
+        <span id="kpiDeltaMeta" class="text-xs font-bold text-emerald-400">▼ -1:28 vs Meta</span>
+      </div>
+      <p id="kpiTempoDecimal" class="text-xs text-slate-400 mt-2 font-medium">8.54 minutos médios</p>
+    </div>
+
+    <!-- KPI 2 -->
+    <div class="kpi-card kpi-green p-5">
+      <div class="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
+        <span>Aderência ao SLA</span>
+        <span class="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded font-bold text-[11px]">&le; 10 min</span>
+      </div>
+      <div class="flex items-baseline gap-2.5">
+        <span id="kpiAderencia" class="text-3xl lg:text-4xl font-extrabold text-emerald-400 tracking-tight">71,8%</span>
+        <span id="kpiRotasOk" class="text-xs text-slate-300 font-medium">554 rotas OK</span>
+      </div>
+      <p class="text-xs text-slate-400 mt-2 font-medium">Conformidade total no período</p>
+    </div>
+
+    <!-- KPI 3 -->
+    <div class="kpi-card kpi-red p-5">
+      <div class="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
+        <span>Bancadas > 10 Min (NOK)</span>
+        <span class="text-red-400 bg-red-500/10 px-2 py-0.5 rounded font-bold text-[11px]">Gargalos</span>
+      </div>
+      <div class="flex items-baseline gap-2.5">
+        <span id="kpiNok" class="text-3xl lg:text-4xl font-extrabold text-rose-400 tracking-tight">218</span>
+        <span id="kpiNokPct" class="text-xs text-rose-400/90 font-bold">(28,2%)</span>
+      </div>
+      <p class="text-xs text-slate-400 mt-2 font-medium">Rotas com tempo excedido</p>
+    </div>
+
+    <!-- KPI 4 -->
+    <div class="kpi-card kpi-blue p-5">
+      <div class="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
+        <span>Volume Auditado</span>
+        <span class="text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded font-bold text-[11px]">Total</span>
+      </div>
+      <div class="flex items-baseline gap-2.5">
+        <span id="kpiTotal" class="text-3xl lg:text-4xl font-extrabold text-white tracking-tight">772</span>
+        <span class="text-xs text-slate-300 font-medium">Rotas / TOs</span>
+      </div>
+      <p id="kpiSubPeriodo" class="text-xs text-slate-400 mt-2 font-medium">Filtro aplicado</p>
+    </div>
+  </div>
+
+  <!-- SEÇÃO 1: ACOMPANHAMENTO DIÁRIO & CONFORMIDADE -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    
+    <!-- Gráfico 1: Acompanhamento Diário com rótulos de dados fixos -->
+    <div class="card-panel lg:col-span-2 p-5 flex flex-col justify-between">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800 gap-2">
+        <div>
+          <div class="flex items-center gap-2">
+            <h2 class="text-base font-bold text-white tracking-tight">Acompanhamento Diário do Tempo Médio</h2>
+            <span class="px-2 py-0.5 bg-orange-500/10 text-orange-400 text-[10px] font-bold rounded">Valores Impressos</span>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5">Tempo médio diário de bancada com exibição direta de minutos por dia e linha de meta</p>
+        </div>
+        <div class="flex items-center gap-4 text-xs font-semibold">
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-1 bg-[#EE4D2D] rounded-full"></span>
+            <span class="text-slate-300">Tempo Médio (min)</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="w-3.5 h-0.5 border-t-2 border-dashed border-rose-500"></span>
+            <span class="text-rose-400">Meta (10,00m)</span>
+          </div>
+        </div>
+      </div>
+      <div class="h-64 mt-4 relative">
+        <canvas id="chartDiario"></canvas>
+      </div>
+      <div class="grid grid-cols-5 gap-2 pt-3 mt-2 border-t border-slate-800/80 text-center" id="cardResumoDiario">
+        <!-- Preenchido via JS com os números estáticos de cada dia -->
+      </div>
+    </div>
+
+    <!-- Gráfico 2: Rosca SLA -->
+    <div class="card-panel p-5 flex flex-col justify-between">
+      <div class="pb-3 border-b border-slate-800">
+        <h2 class="text-base font-bold text-white tracking-tight">Distribuição de Conformidade</h2>
+        <p class="text-xs text-slate-400 mt-0.5">Rotas dentro do SLA (&le;10m) vs Fora do SLA (>10m)</p>
+      </div>
+      <div class="h-56 relative flex items-center justify-center mt-2">
+        <canvas id="chartRosca"></canvas>
+        <div class="absolute text-center pointer-events-none">
+          <span class="text-2xl font-black text-white" id="donutTotal">772</span>
+          <span class="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total</span>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-2 pt-3 border-t border-slate-800 text-center">
+        <div class="bg-slate-900/80 py-2 rounded-xl border border-emerald-500/20">
+          <span class="text-[11px] text-emerald-400 font-bold block">OK (&le; 10m)</span>
+          <span class="text-base font-black text-white" id="donutOkVal">554 (71,8%)</span>
+        </div>
+        <div class="bg-slate-900/80 py-2 rounded-xl border border-rose-500/20">
+          <span class="text-[11px] text-rose-400 font-bold block">NOK (> 10m)</span>
+          <span class="text-base font-black text-white" id="donutNokVal">218 (28,2%)</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- SEÇÃO 2: OFENSORES & MOTORISTAS (COM VALORES EXPLICITOS) -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    
+    <!-- Gráfico 3: Motivos Ofensores -->
+    <div class="card-panel p-5">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <div>
+          <h2 class="text-base font-bold text-white tracking-tight">Ofensores de Tempo (Motivos Mapeados)</h2>
+          <p class="text-xs text-slate-400 mt-0.5">Quantitativo direto por motivo (foco de actuação operacional)</p>
+        </div>
+        <span class="px-2.5 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-lg text-xs font-bold">
+          Qtd Registada
+        </span>
+      </div>
+      <div class="h-72 mt-4 relative">
+        <canvas id="chartMotivos"></canvas>
+      </div>
+    </div>
+
+    <!-- Gráfico 4: Top Motoristas -->
+    <div class="card-panel p-5">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <div>
+          <h2 class="text-base font-bold text-white tracking-tight">Top Motoristas com Maior Tempo Médio</h2>
+          <p class="text-xs text-slate-400 mt-0.5">Tempo médio em bancada (com minutos exatos em cada barra)</p>
+        </div>
+        <span class="px-2.5 py-1 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-lg text-xs font-bold">
+          Críticos
+        </span>
+      </div>
+      <div class="h-72 mt-4 relative">
+        <canvas id="chartMotoristas"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- SEÇÃO 3: AUDITORIA / PERFORMANCE INDIVIDUAL -->
+  <div class="card-panel p-5">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800 gap-3">
+      <div>
+        <h2 class="text-base font-bold text-white tracking-tight">Desempenho por Colaborador / Auditor de Bancada</h2>
+        <p class="text-xs text-slate-400 mt-0.5">Resumo consolidado de rotas, tempo médio auditado e conformidade individual</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <input type="text" id="buscaColaborador" oninput="filtrarTabela()" placeholder="Filtrar colaborador..." class="bg-[#0E131F] border border-slate-700/80 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 w-full sm:w-64">
+      </div>
+    </div>
+
+    <div class="overflow-x-auto mt-4">
+      <table class="w-full text-left text-xs text-slate-300">
+        <thead class="bg-[#0E131F] text-slate-400 font-bold uppercase tracking-wider text-[11px] border-b border-slate-800">
+          <tr>
+            <th class="py-3 px-4">Colaborador / Auditor</th>
+            <th class="py-3 px-4 text-center">Total Rotas</th>
+            <th class="py-3 px-4 text-center">Tempo Médio (MM:SS)</th>
+            <th class="py-3 px-4 text-center">Tempo (Min Dec.)</th>
+            <th class="py-3 px-4 text-center">Rotas OK</th>
+            <th class="py-3 px-4 text-center">Rotas NOK</th>
+            <th class="py-3 px-4 text-center">Aderência SLA</th>
+            <th class="py-3 px-4 text-center">Status</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaColaboradores" class="divide-y divide-slate-800/60">
+          <!-- Gerado dinamicamente -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- MOTOR JAVASCRIPT: DADOS REAIS + REGISTO DO DATALABELS + FILTROS DINÂMICOS -->
+  <script>
+    // Registrar Plugin Oficial de Rótulos de Dados do Chart.js
+    Chart.register(ChartDataLabels);
+
+    // BASE DE DADOS COMPLETA DOS 772 REGISTOS DA PLANILHA
+    const RAW_DATA = [{"d": "16/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "ISRAEL FERREIRA ACARIO", "min": 6.85, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "MARCOS AURÉLIO FREIRE SILVA DA HORA", "min": 5.18, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "VANESSA DE ALMEIDA FONSECA", "min": 6.83, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "VERLAN MARINHO DO AMOR DIVINO", "min": 8.55, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "BRUNO DOS SANTOS ALVES", "min": 7.97, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "ANDREIA DOS SANTOS MUNIZ MOREIRA", "min": 15.37, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "FABIANO ESQUIVEL PEREIRA", "min": 10.07, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "LEANDRO CAVALCANTI DA SILVA", "min": 5.4, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "ROSANE DA CONCEICAO FERREIRA", "min": 8.67, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "JHONATAN FONSECA GUIMARAES", "min": 4.12, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "EDSON ROGERIO DOS SANTOS", "min": 8.4, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "ALOISIO LOPES DE OLIVEIRA", "min": 8.58, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "LUCAS DA SILVA RAYMUNDO", "min": 3.45, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "ROMULO GALAXE DOS SANTOS", "min": 10.98, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "ANA BEATRIZ DA MOTA PONCIO LOPES", "min": 5.13, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "DIEGO LUIZ FERREIRA FALCAO", "min": 5.98, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "VICTOR PACHECO BESSA DE OLIVEIRA", "min": 3.37, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "JULIANNA MATARUNA MATTA", "min": 5.32, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "ALLEF TEIXEIRA PAIVA", "min": 7.22, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "MARINA PONCE DE ALMEIDA", "min": 9.03, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "ANTONIO FELIPE DE PAULA NASCIMENTO", "min": 11.57, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "BIANCA CONCEICAO SIQUEIRA", "min": 8.22, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "RAYSA NEVES SOARES SILVA", "min": 7.18, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "LEANDRO GOMES DA MOTTA ALVES", "min": 7.13, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "ROSELENE PEREIRA DO NASCIMENTO", "min": 6.05, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "JOSIANE AZEVEDO DE OLIVEIRA", "min": 10.25, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "FERNANDA LANDIM NUNES", "min": 10.95, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "LEANDRO TRINDADE DA SILVEIRA", "min": 9.13, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "VIVIANE BALBINO MEDEIROS", "min": 11.72, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "LAIS PEREIRA", "min": 7.37, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "PRISCILA CAMPOS DA CONCEICAO", "min": 7.0, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "VALKER FIGUEIREDO DA SILVA", "min": 9.33, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "LUCAS NASCIMENTO FONSECA", "min": 6.77, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "WAGNER NICOLINI DE OLIVEIRA", "min": 10.48, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "PAULO ROBERTO LOURENCO MARINS", "min": 7.88, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "LEONARDO OLIVEIRA SILVA", "min": 6.53, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "VAGNER DA SILVA LIMA", "min": 10.18, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "CAROLINE BIEBE CHAGAS", "min": 15.48, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "RICARDO MAURENTE DA ROCHA", "min": 9.13, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "MICHELLE DE AQUINO PINHEIRO", "min": 4.83, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "WILLIAM HENRIQUE SOUZA DA ROCHA", "m": "VERÔNICA DE SOUZA FIGUEIREDO DE ARAUJO", "min": 9.35, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "ALINE ALVES PEREIRA", "min": 8.32, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "ALESSANDRO PEREIRA ROHAN", "min": 5.62, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "DAVID RODRIGO SOUZA LIMA", "m": "DAYANA GLEYCE MOREIRA DE SOUZA", "min": 10.13, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "WELLINGTON DA SILVA CARREIRO", "min": 9.0, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "RODRIGO CARVALHO DE SOUZA", "m": "JOHNATAS DE MARINS DA SILVA", "min": 9.72, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "DANIEL RICARDO SOARES ASSUNÇÃO", "min": 10.95, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "LUIZ FELIPE QUARESMA DELMONDES", "min": 7.68, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "GABRIEL SILVA DO ESPIRÍTO SANTO PEREIRA", "m": "LEONARDO DA SILVA COSTA", "min": 6.13, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "DAVID RODRIGO SOUZA LIMA", "m": "PATRICIA ROCA DOS SANTOS CAMPOS", "min": 7.17, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "DOUGLAS MOREIRA MARINS", "min": 10.03, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "WILLIAM HENRIQUE SOUZA DA ROCHA", "m": "VAGNER GENESIO DE FREITAS", "min": 10.23, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "GABRIEL CLECIANO FERNANDES MONTEIRO", "min": 4.68, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "RENATO FERREIRA DA SILVA", "min": 8.1, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "LEONARDO FIGUEIREDO SILVA", "m": "ALMIR DOS SANTOS LAUREANO", "min": 12.5, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "DAVID RODRIGO SOUZA LIMA", "m": "AILTON MARQUES DA CRUZ FILHO", "min": 5.75, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "GABRIEL SILVA DO ESPIRÍTO SANTO PEREIRA", "m": "JHORHAN MACHADO SOARES", "min": 4.0, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "RODRIGO CARVALHO DE SOUZA", "m": "MATHEUS LUIS DA SILVA RAMALHO", "min": 5.97, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "DIEGO ALVES MOREIRA", "min": 12.47, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "MARCREY MONTEIRO TAVARES", "m": "JIMMY ALLAN CAVALCANTE DE LIMA", "min": 9.95, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "GABRIEL SILVA DO ESPIRÍTO SANTO PEREIRA", "m": "GABRIEL SOARES MEIRELES", "min": 7.67, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "RICHARD SANTOS DE SOUZA", "m": "ANDRÉA DE ANDRADE MACHADO", "min": 5.07, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "DAVID RODRIGO SOUZA LIMA", "m": "EDSON MAURO MOREIRA AMARAL", "min": 8.7, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "RODRIGO CARVALHO DE SOUZA", "m": "GEOVANA DA SILVA VERNEQUE", "min": 8.77, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "WILLIAM HENRIQUE SOUZA DA ROCHA", "m": "LETICIA CRISTINA RAMALHO DA COSTA", "min": 9.85, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "EDUARDO DE ANDRADE MACEDO", "min": 8.27, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "MARCREY MONTEIRO TAVARES", "m": "VIVIAN OLIVEIRA CUNHA", "min": 9.1, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "CLAYTON DOS SANTOS SILVA", "min": 24.93, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "SERGIO SANTOS DO NASCIMENTO", "min": 12.32, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "GABRIEL SILVA DO ESPIRÍTO SANTO PEREIRA", "m": "ELIELTON LOURENA DE MESQUITA", "min": 5.0, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "ALEX SANTOS SILVA", "m": "RAMON DOS SANTOS BARCELOS", "min": 8.75, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "RODRIGO CARVALHO DE SOUZA", "m": "OTAVIO GOMES DIZ", "min": 13.92, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "RICHARD SANTOS DE SOUZA", "m": "ISAIAS AZEREDO DA SILVA SOUZA", "min": 12.22, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "FABRICIO DA FONSECA SOARES", "min": 8.9, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "ALEX SANTOS SILVA", "m": "SAMUEL JOSE DA COSTA JUNIOR", "min": 6.78, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "GABRIEL SILVA DO ESPIRÍTO SANTO PEREIRA", "m": "RAMON DA SILVA LOPES DO ROSARIO", "min": 5.35, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "JOSE HENRIQUE PAULINO DOS SANTOS", "min": 13.7, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "MARCREY MONTEIRO TAVARES", "m": "JOSE LUIZ MOUTINHO DOS SANTOS", "min": 11.52, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "JOAO MARCOS HIPOLITO BRITO", "min": 13.97, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "RICHARD SANTOS DE SOUZA", "m": "DIEGO NOVAES DA SILVA", "min": 9.85, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "RODRIGO CARVALHO DE SOUZA", "m": "TAINARA GONÇALVES RODRIGUES", "min": 12.45, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "ROWLEN DE SOUZA SOARES", "min": 9.23, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "ALEX SANTOS SILVA", "m": "GABRIEL SILVA DA CAMARA BRAZAO", "min": 6.3, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "GABRIEL SILVA DO ESPIRÍTO SANTO PEREIRA", "m": "JOELMA RODRIGUES DA SILVA", "min": 7.32, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "MARCREY MONTEIRO TAVARES", "m": "WILIAN DOS SANTOS VIANA", "min": 7.38, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "JOSÉ ROBERTO BORGES FIUZAS", "min": 13.1, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "GABRIEL SILVA DO ESPIRÍTO SANTO PEREIRA", "m": "VICTOR PACHECO BESSA DE OLIVEIRA", "min": 5.95, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "RICHARD SANTOS DE SOUZA", "m": "BRUNO LAURENTINO DA SILVA", "min": 9.32, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "DIOGO ALESSANDRO CUNHA DA SILVA", "min": 9.72, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "ALEX SANTOS SILVA", "m": "RAFAEL DA SILVA SIQUEIRA", "min": 5.45, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "JOAO BAPTISTA MAGESTE", "min": 6.17, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "MAGNO DA SILVA LUSINDO", "min": 11.55, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "LEONARDO FERREIRA DE PAULA GONCALVES", "m": "RHUAN LOPES RAIMUNDO", "min": 9.13, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "ANA CLÁUDIA DO NASCIMENTO DE SOUZA", "min": 7.8, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "HENRIMAR RAMOS ATAIDE", "min": 11.13, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "KAYLANE DA SILVA OLIVEIRA", "min": 8.88, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "LEONARDO WANDERSON DA SILVA", "min": 10.93, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "RAFAEL GOMES DO AMPARO", "min": 11.45, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "LEONARDO FERREIRA DE PAULA GONCALVES", "m": "RAFAEL DE JESUS GOMES", "min": 5.65, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "MARCOS VINICIUS CONCEICAO DA COSTA", "min": 9.23, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "THAÍS CRISTINA COSTA DA SILVA RODRIGUES", "min": 11.07, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "IVAN LESSA LOPES", "min": 10.42, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "ALEX SANTOS SILVA", "m": "WESLEI DA CONCEICAO GOMES CRESPO", "min": 3.9, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "GUILHERME QUINTANILHA CONCEICAO", "min": 5.93, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "JUAN LAUREANO DE OLIVEIRA", "min": 10.18, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "LEONARDO OLIVEIRA ASSIS", "min": 5.23, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "BRUNA ABEL FRANCISCO", "min": 12.68, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "DIOGO ALVES MORAES MATTOS", "m": "HIGOR LAURENTINO DA SILVA", "min": 7.45, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "ALEX SANTOS SILVA", "m": "JONATHA FAGUNDES TAVARES", "min": 5.02, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "ANTONIO MAURICIO FIGUEIREDO BALTHAZAR", "min": 7.65, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "ARTHUR BORGES LESSA DE OLIVEIRA", "min": 7.02, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "LEONARDO FERREIRA DE PAULA GONCALVES", "m": "JOZELI CORDEIRO DE ANDRADE VEIGA", "min": 11.88, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "EDUARDO DA SILVA GERALDO", "min": 4.18, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "DIOGO ALVES MORAES MATTOS", "m": "RUAN DE ALMEIDA VEIGA DE ANDRADE", "min": 8.32, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "MONIQUE ROCHA GOMES", "min": 7.02, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "LUIS CLAUDIO HONDA COSTA", "min": 15.92, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "FERNANDA CARDOSO BENEVIDES", "min": 10.67, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "ARLANE COUTO DE SOUZA LEANDRO", "min": 6.48, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "JULIANO DOUGLAS MEDEIROS DA SILVA DUTRA", "min": 14.75, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "DIOGO ALVES MORAES MATTOS", "m": "RIAN DA CONCEICAO PINHEIRO", "min": 5.73, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "ALESSANDRA ROCHA DOS SANTOS", "min": 7.15, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "ZELMIR BESSA DE AMORIM", "min": 4.37, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "ALEX SANTOS SILVA", "m": "GABRIEL CESAR DA SILVEIRA FURTADO", "min": 7.92, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "FELIPE RODRIGUES DA SILVA", "min": 10.92, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "ALEFF VALERIOTE AREAS DUARTE", "min": 10.45, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "LUIZ HENRIQUE MARINS DA SILVA", "min": 13.23, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "JOSE NILTON DOS SANTOS", "min": 15.42, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "DIOGO ALVES MORAES MATTOS", "m": "MAYCON VINICIUS RAMOS DOS ANJOS", "min": 9.08, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "EDSON DE MOURA MIRANDA JUNIOR", "min": 13.23, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "MICHEL ALVES DA SILVA", "min": 6.68, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "NATHAN RIOS DA COSTA", "min": 10.18, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "MATEUS SANTOS LEMOS", "min": 9.25, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "CAMILA ESPINDOLA DE OLIVEIRA RODRIGUES", "min": 4.05, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "JHONATAS COELHO SILVA", "min": 6.0, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "JESSICA MOREIRA VALERIOTE", "min": 12.73, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "ALEX SANTOS SILVA", "m": "JOSE RICARDO SILVEIRA GUSMAO JUNIOR", "min": 8.8, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "KATIA DA SILVA COELHO", "min": 11.83, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "DOUGLAS DE SOUZA CARVALHO", "min": 13.18, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "DIOGO ALVES MORAES MATTOS", "m": "GUILHERME GOULART RODRIGUES", "min": 14.62, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "RONNI LOPES DE SOUZA", "min": 6.55, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "LUCIMAR DE ALCANTARA OLIVEIRA DA FONSECA", "min": 8.1, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "KAIKY CORDEIRO MARINHO", "min": 5.38, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "CESAR AUGUSTO ROSA", "min": 12.72, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "ALEX SANTOS SILVA", "m": "WENDEL OLIVEIRA PEREIRA", "min": 7.17, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "CARLOS FELIPE DE OLIVEIRA DA SILVA", "min": 3.73, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "DIOGO ALVES MORAES MATTOS", "m": "TIAGO NOGUEIRA BELISARIO", "min": 7.77, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "RANNA CAROLAYNE SANTOS DA SILVA", "min": 8.17, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "RENAN DUTRA DE SOUZA", "min": 7.78, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "DANIEL VAGNER SILVA DE FREITAS", "min": 5.4, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "WESLEY PAULA DA SILVA", "min": 5.23, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "CAIO VINICIUS COUTINHO SOARES", "min": 5.58, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "LUIS FELIPE DO ESPIRITO SANTO RIBEIRO", "min": 10.17, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "ALEX SANTOS SILVA", "m": "JAILSON FAGNER PEREIRA SILVA", "min": 8.45, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "FABIO SOARES BANDEIRA DOS SANTOS", "min": 4.05, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "RAFAEL ALVARENGA DA SILVA", "min": 7.45, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "DIOGO ALVES MORAES MATTOS", "m": "MATHEUS DA SILVA NOVAES", "min": 10.07, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "FELIPE OLIVEIRA GONCALVES", "min": 6.4, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "JOAO VICTOR DE ALMEIDA SOUZA", "min": 6.55, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "MATHEUS TEIXEIRA SOUZA", "min": 7.63, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "BRENO MAIA AZEVEDO", "min": 6.72, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "ALEX SANTOS SILVA", "m": "PAULO MAGNO DA COSTA COUTINHO", "min": 4.08, "cond": "OK", "mot": "Não Mapeado"}, {"d": "16/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "ODILON DA SILVA BRANDT", "min": 4.4, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "ANDRE DOS SANTOS ROCHA", "min": 3.6, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "PABLO AURELIO FREITAS DA HORA", "min": 7.05, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "PAULA DE FRIAS PINTO", "min": 5.0, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "DIOGO ALESSANDRO CUNHA DA SILVA", "min": 5.75, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "FABIANO DE OLIVEIRA SILVA", "min": 8.03, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "ANDRE GONCALVES DA SILVA", "min": 10.0, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "RICARDO MAURENTE DA ROCHA", "min": 6.55, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "GABRIEL SOARES MEIRELES", "min": 8.57, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MAYCON DOUGLAS NASCIMENTO FONSECA", "m": "ANDREIA DOS SANTOS MUNIZ MOREIRA", "min": 18.48, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "FERNANDA LANDIM NUNES", "min": 7.75, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "RONAN DE OLIVEIRA SA", "min": 6.18, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "FABIANO ESQUIVEL PEREIRA", "min": 12.5, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "JOSE ROBSON SANTOS MONTEIRO", "min": 14.78, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "LUIZ FELIPE QUARESMA DELMONDES", "min": 7.1, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "ANTONIO CESAR BENTO DOS SANTOS", "min": 6.73, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "PAULO ROBERTO LOURENCO MARINS", "min": 4.47, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "DIEGO ALVES MOREIRA", "min": 7.08, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MAYCON DOUGLAS NASCIMENTO FONSECA", "m": "ROSELENE PEREIRA DO NASCIMENTO", "min": 13.53, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "DIEGO LUIZ FERREIRA FALCAO", "min": 11.97, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "RAMON DA SILVA LOPES DO ROSARIO", "min": 9.27, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "ALOISIO LOPES DE OLIVEIRA", "min": 11.53, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "EDSON DA SILVA MANOEL", "min": 9.22, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "ALLEF TEIXEIRA PAIVA", "min": 8.87, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "MARCIO PACHECO DE LIMA", "min": 8.83, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MAYCON DOUGLAS NASCIMENTO FONSECA", "m": "ANA RITA SILVA DE CARVALHO", "min": 14.0, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "DAVID RODRIGO SOUZA LIMA", "m": "ISRAEL FERREIRA ACARIO", "min": 5.28, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "JOAO BAPTISTA MAGESTE", "min": 11.45, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "LEONARDO OLIVEIRA SILVA", "min": 7.53, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "DAVID RODRIGO SOUZA LIMA", "m": "KLEBER GOMES DA SILVA", "min": 5.12, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "CARLOS LEANDRO RIBEIRO DO NASCIMENTO", "min": 10.88, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "JONATHA FAGUNDES TAVARES", "min": 7.13, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "BARBARA DA ROCHA PINHEIRO", "min": 8.42, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "JOSE CARLOS FERREIRA DE AQUINO", "min": 19.82, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "BRUNO LAURENTINO DA SILVA", "min": 7.53, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MAYCON DOUGLAS NASCIMENTO FONSECA", "m": "MARINA PONCE DE ALMEIDA", "min": 12.52, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "ANTONIO FELIPE DE PAULA NASCIMENTO", "min": 19.27, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "WILLIAM HENRIQUE SOUZA DA ROCHA", "m": "DOUGLAS MOREIRA MARINS", "min": 12.83, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "MATHEUS LUIS DA SILVA RAMALHO", "min": 6.23, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "DANIEL RICARDO SOARES ASSUNÇÃO", "min": 13.68, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "DAYANA GLEYCE MOREIRA DE SOUZA", "min": 11.35, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "DAVID RODRIGO SOUZA LIMA", "m": "ROMULO GALAXE DOS SANTOS", "min": 7.5, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "GABRIEL SILVA DO ESPIRÍTO SANTO PEREIRA", "m": "LUAN FERREIRA MALTEZ", "min": 13.07, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "RIAN DA CONCEICAO PINHEIRO", "min": 11.83, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "RICHARD SANTOS DE SOUZA", "m": "RHUAN LOPES RAIMUNDO", "min": 9.38, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "WILLIAM HENRIQUE SOUZA DA ROCHA", "m": "JIMMY ALLAN CAVALCANTE DE LIMA", "min": 8.63, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "DAVID RODRIGO SOUZA LIMA", "m": "GABRIELLE DA ROCHA MACEDO RAMOS", "min": 4.65, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "LAIS PEREIRA", "min": 6.98, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "CLAYTON DOS SANTOS SILVA", "min": 15.55, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "DAVID RODRIGO SOUZA LIMA", "m": "MICHELLE DE AQUINO PINHEIRO", "min": 5.47, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "JULIANNA MATARUNA MATTA", "min": 10.8, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MAYCON DOUGLAS NASCIMENTO FONSECA", "m": "VIVIANE BALBINO MEDEIROS", "min": 10.88, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "WILLIAM HENRIQUE SOUZA DA ROCHA", "m": "MILLENA DA SILVA RANGEL", "min": 4.67, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "PATRICIA ROCA DOS SANTOS CAMPOS", "min": 11.55, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "CAROLINE BIEBE CHAGAS", "min": 14.55, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "VINICIUS LEITE PEREIRA DE SOUZA", "min": 7.33, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "MARCOS VINICIUS CONCEICAO DA COSTA", "min": 9.83, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "GABRIEL SILVA DO ESPIRÍTO SANTO PEREIRA", "m": "FABRICIO DA FONSECA SOARES", "min": 9.77, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "WILLIAM HENRIQUE SOUZA DA ROCHA", "m": "ROWLEN DE SOUZA SOARES", "min": 10.75, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "DAVID RODRIGO SOUZA LIMA", "m": "LETICIA CRISTINA RAMALHO DA COSTA", "min": 9.73, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MAYCON DOUGLAS NASCIMENTO FONSECA", "m": "JOHNATAS DE MARINS DA SILVA", "min": 13.5, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "MAGNO DA SILVA LUSINDO", "min": 15.15, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MARCREY MONTEIRO TAVARES", "m": "DIEGO NOVAES DA SILVA", "min": 13.03, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "ELIELTON LOURENA DE MESQUITA", "min": 9.33, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "DAVID RODRIGO SOUZA LIMA", "m": "SAMUEL JOSE DA COSTA JUNIOR", "min": 8.25, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "RICHARD SANTOS DE SOUZA", "m": "ALMIR DOS SANTOS LAUREANO", "min": 11.72, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "JHORHAN MACHADO SOARES", "min": 9.37, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "RAFAEL GOMES DO AMPARO", "min": 10.68, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "DIOGO ALVES MORAES MATTOS", "m": "RENATO DA FONSECA FERREIRA", "min": 11.45, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "GABRIEL SILVA DO ESPIRÍTO SANTO PEREIRA", "m": "ANA CLÁUDIA DO NASCIMENTO DE SOUZA", "min": 6.28, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MAYCON DOUGLAS NASCIMENTO FONSECA", "m": "LEONARDO DA SILVA COSTA", "min": 8.15, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "DAVID RODRIGO SOUZA LIMA", "m": "ISAIAS AZEREDO DA SILVA SOUZA", "min": 9.62, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "DAVID RODRIGO SOUZA LIMA", "m": "LEONARDO WANDERSON DA SILVA", "min": 11.77, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MARCREY MONTEIRO TAVARES", "m": "LEANDRO CAVALCANTI DA SILVA", "min": 9.95, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "GABRIEL SILVA DO ESPIRÍTO SANTO PEREIRA", "m": "BEATRIZ DE JESUS MONTEIRO DE SOUZA", "min": 5.72, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "LEONARDO OLIVEIRA ASSIS", "min": 9.47, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "RICHARD SANTOS DE SOUZA", "m": "RAMON DA SILVA LOPES DO ROSARIO", "min": 8.53, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MAYCON DOUGLAS NASCIMENTO FONSECA", "m": "LUCAS CUNHA RODRIGUES", "min": 12.02, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "RAFAEL DE JESUS GOMES", "min": 13.0, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "DIOGO ALVES MORAES MATTOS", "m": "DIOGO SANTOS LAVAREDA", "min": 10.45, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "CHARLES ANDERSON DE SOUSA PEREIRA", "min": 12.83, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "GABRIEL SILVA DO ESPIRÍTO SANTO PEREIRA", "m": "GUILHERME QUINTANILHA CONCEICAO", "min": 7.8, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "DAVID RODRIGO SOUZA LIMA", "m": "ANTONIO MAURICIO FIGUEIREDO BALTHAZAR", "min": 9.58, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "RICHARD SANTOS DE SOUZA", "m": "MILLENA DA SILVA RANGEL", "min": 6.92, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MARCREY MONTEIRO TAVARES", "m": "ANDRÉA DE ANDRADE MACHADO", "min": 12.13, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MAYCON DOUGLAS NASCIMENTO FONSECA", "m": "ZELMIR BESSA DE AMORIM", "min": 8.75, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "JOSÉ ROBERTO BORGES FIUZAS", "min": 12.1, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "GABRIEL SILVA DA CAMARA BRAZAO", "min": 10.68, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "GABRIEL SILVA DO ESPIRÍTO SANTO PEREIRA", "m": "JULIANO DOUGLAS MEDEIROS DA SILVA DUTRA", "min": 4.87, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "LUCIENE FARIA SOARES", "min": 5.42, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "DAVID RODRIGO SOUZA LIMA", "m": "KAYLANE DA SILVA OLIVEIRA", "min": 7.28, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "RICHARD SANTOS DE SOUZA", "m": "WILIAN DOS SANTOS VIANA", "min": 6.25, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "GABRIEL SILVA DO ESPIRÍTO SANTO PEREIRA", "m": "ARTHUR BORGES LESSA DE OLIVEIRA", "min": 5.95, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MARCREY MONTEIRO TAVARES", "m": "ARLANE COUTO DE SOUZA LEANDRO", "min": 10.72, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "KEVEN MATHEUS CÉSAR DE OLIVEIRA", "min": 6.58, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "ALEX SANTOS SILVA", "m": "MARCOS VINICIUS CONCEICAO DA COSTA", "min": 6.25, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "FELIPE RODRIGUES DA SILVA", "min": 12.1, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "WESLEI DA CONCEICAO GOMES CRESPO", "min": 5.72, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "HIGOR LAURENTINO DA SILVA", "min": 5.53, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "DIOGO ALVES MORAES MATTOS", "m": "IGOR DA CONCEICAO CARVALHO VIEIRA", "min": 13.27, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "DAVID RODRIGO SOUZA LIMA", "m": "ALESSANDRA ROCHA DOS SANTOS", "min": 8.68, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MAYCON DOUGLAS NASCIMENTO FONSECA", "m": "BRUNO SOUZA DA SILVA", "min": 16.88, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "THAÍS CRISTINA COSTA DA SILVA RODRIGUES", "min": 9.6, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "RICHARD SANTOS DE SOUZA", "m": "MATEUS SANTOS LEMOS", "min": 11.9, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "MATHEUS LUIS DA SILVA RAMALHO", "min": 4.33, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MARCREY MONTEIRO TAVARES", "m": "JOSE NILTON DOS SANTOS", "min": 14.33, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "EDSON DE MOURA MIRANDA JUNIOR", "min": 7.42, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MAYCON DOUGLAS NASCIMENTO FONSECA", "m": "MICHELLE BARBOSA DE PAULA", "min": 12.7, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "DAVID RODRIGO SOUZA LIMA", "m": "MAYCON VINICIUS RAMOS DOS ANJOS", "min": 10.35, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "ALEX SANTOS SILVA", "m": "JUAN LAUREANO DE OLIVEIRA", "min": 9.33, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "RICHARD SANTOS DE SOUZA", "m": "GABRIEL DA ROCHA MACEDO RAMOS", "min": 10.85, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "DANIEL VAGNER SILVA DE FREITAS", "min": 4.43, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "NATHAN RIOS DA COSTA", "min": 9.73, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "RONNI LOPES DE SOUZA", "min": 10.13, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "DIOGO ALVES MORAES MATTOS", "m": "ALEFF VALERIOTE AREAS DUARTE", "min": 10.03, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "FERNANDA CARDOSO BENEVIDES", "min": 15.73, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MARCREY MONTEIRO TAVARES", "m": "MICHEL ALVES DA SILVA", "min": 11.87, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "GABRIEL CESAR DA SILVEIRA FURTADO", "min": 6.32, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MAYCON DOUGLAS NASCIMENTO FONSECA", "m": "JOSE RICARDO SILVEIRA GUSMAO JUNIOR", "min": 12.8, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "DAVID RODRIGO SOUZA LIMA", "m": "DOUGLAS DE SOUZA CARVALHO", "min": 10.77, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "CESAR AUGUSTO ROSA", "min": 9.37, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "RICHARD SANTOS DE SOUZA", "m": "LUIS FELIPE DO ESPIRITO SANTO RIBEIRO", "min": 11.28, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "ALEX SANTOS SILVA", "m": "TIAGO NOGUEIRA BELISARIO", "min": 8.33, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "DIOGO ALVES MORAES MATTOS", "m": "CAIO VINICIUS COUTINHO SOARES", "min": 6.6, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "BRENO MAIA AZEVEDO", "min": 4.12, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "WESLEY PAULA DA SILVA", "min": 7.98, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "RUAN DE ALMEIDA VEIGA DE ANDRADE", "min": 10.47, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "LEONARDO FERREIRA DE PAULA GONCALVES", "m": "KAIKY CORDEIRO MARINHO", "min": 6.75, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "RANNA CAROLAYNE SANTOS DA SILVA", "min": 7.27, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "RENAN DUTRA DE SOUZA", "min": 7.1, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "JAILSON FAGNER PEREIRA SILVA", "min": 10.77, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "MATHEUS DA SILVA NOVAES", "min": 9.9, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "FLAVIANE CABRAL DA SILVA", "min": 4.7, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "ALEX SANTOS SILVA", "m": "JESSICA MOREIRA VALERIOTE", "min": 10.12, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "LEONARDO FERREIRA DE PAULA GONCALVES", "m": "CARLOS FELIPE DE OLIVEIRA DA SILVA", "min": 7.32, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "PAULO MAGNO DA COSTA COUTINHO", "min": 4.42, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "RAFAEL ALVARENGA DA SILVA", "min": 8.53, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "DIOGO ALVES MORAES MATTOS", "m": "FABIO SOARES BANDEIRA DOS SANTOS", "min": 5.85, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "JEFFERSON ALVES DA SILVA", "min": 3.9, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "JOAO VICTOR DE ALMEIDA SOUZA", "min": 7.65, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "LUCAS RIBEIRO CALDEIRA", "min": 6.65, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "CAMILA ESPINDOLA DE OLIVEIRA RODRIGUES", "min": 9.08, "cond": "OK", "mot": "Não Mapeado"}, {"d": "15/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "ODILON DA SILVA BRANDT", "min": 5.97, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "AYRANA ALEXANDRE MUNIZ MOREIRA", "min": 8.27, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "CARLOS FELIPE DE OLIVEIRA DA SILVA", "min": 3.95, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "ALESSANDRA ROCHA DOS SANTOS", "min": 5.23, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "PAULA DE FRIAS PINTO", "min": 5.35, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "ALEX SANTOS SILVA", "m": "BRUNO DOS SANTOS ALVES", "min": 7.25, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "ROSANE DA CONCEICAO FERREIRA", "min": 13.93, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "ERICA SANTOS DE ARAUJO", "min": 10.52, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "ALEX SANTOS SILVA", "m": "RAYSA NEVES SOARES SILVA", "min": 9.58, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "LILIAN LOURO FERREIRA PEREIRA", "min": 7.13, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "YURI DEBRUEM FARIA", "m": "RICARDO MAURENTE DA ROCHA", "min": 8.97, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "JOSE ROBSON SANTOS MONTEIRO", "min": 6.93, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "VANESSA DE ALMEIDA FONSECA", "min": 15.3, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "RONAN DE OLIVEIRA SA", "min": 4.8, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "ANDREIA DOS SANTOS MUNIZ MOREIRA", "min": 8.42, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "DIEGO ALVES MOREIRA", "min": 10.8, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "BARBARA DA ROCHA PINHEIRO", "min": 9.52, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "JOAO SOARES LOPES", "min": 7.05, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "ANA CRISTINA DOS SANTOS NEVES BRAGA", "min": 7.1, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "RICHARD SANTOS DE SOUZA", "m": "FABIANO ESQUIVEL PEREIRA", "min": 11.62, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "JOAO VICTOR DOS SANTOS ARCANJO", "min": 6.22, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "WAGNER NICOLINI DE OLIVEIRA", "min": 10.8, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "VINICIUS LEITE PEREIRA DE SOUZA", "min": 7.0, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "ALEX SANTOS SILVA", "m": "JULIANNA MATARUNA MATTA", "min": 7.67, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "FERNANDA LANDIM NUNES", "min": 13.67, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "LUIZ FELIPE QUARESMA DELMONDES", "min": 16.57, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "LUAN FERREIRA MALTEZ", "min": 13.75, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "RAFAEL LUIS RIBEIRO CRISTOVAM", "min": 5.5, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "SANDRO MACIEL DA SILVA GOMES", "min": 6.97, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "DIEGO LUIZ FERREIRA FALCAO", "min": 5.08, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "ALESSANDRO PEREIRA ROHAN", "min": 6.98, "cond": "OK", "mot": "Outros"}, {"d": "17/09", "c": "RICHARD SANTOS DE SOUZA", "m": "JOSE RICARDO JESUS DOS SANTOS", "min": 11.12, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "ANTONIO CESAR BENTO DOS SANTOS", "min": 11.38, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "JOAO SOARES LOPES", "min": 6.07, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "JOSIANE AZEVEDO DE OLIVEIRA", "min": 10.5, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "DIOGO ALESSANDRO CUNHA DA SILVA", "min": 11.35, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "ALEX SANTOS SILVA", "m": "JOSE CARLOS FERREIRA DE AQUINO", "min": 8.98, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "LEONARDO OLIVEIRA SILVA", "min": 10.3, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "ROMULO GALAXE DOS SANTOS", "min": 16.63, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "LUCAS NASCIMENTO FONSECA", "min": 7.52, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "SERGIO SANTOS DO NASCIMENTO", "min": 16.67, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "LEONARDO FERREIRA DE PAULA GONCALVES", "m": "CARLOS LEANDRO RIBEIRO DO NASCIMENTO", "min": 11.22, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "KLEBER GOMES DA SILVA", "min": 6.0, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "JIMMY ALLAN CAVALCANTE DE LIMA", "min": 13.37, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "ANDRE DOS SANTOS ROCHA", "min": 13.65, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "THAINA SILVA DA CONCEICAO", "min": 8.42, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "ALEX SANTOS SILVA", "m": "PRISCILLA GERALDES GOMES TRINDADE", "min": 10.6, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "LETICIA CRISTINA RAMALHO DA COSTA", "min": 8.03, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "LAIS PEREIRA", "min": 10.18, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "VALKER FIGUEIREDO DA SILVA", "min": 7.38, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "WILLIAM HENRIQUE SOUZA DA ROCHA", "m": "LEONARDO FERREIRA ATAIDE", "min": 8.2, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "FELIPE MARTINS DE ALEXANDRIA", "m": "CAROLINE BIEBE CHAGAS", "min": 7.97, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "JOAO BAPTISTA MAGESTE", "min": 10.63, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "ROSELENE PEREIRA DO NASCIMENTO", "min": 4.07, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "DOUGLAS MOREIRA MARINS", "min": 12.1, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "HELENA RODRIGUES MOREIRA AMARAL", "min": 9.47, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "MARINA PONCE DE ALMEIDA", "min": 5.93, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "WILLIAM HENRIQUE SOUZA DA ROCHA", "m": "ADEJANE DOS SANTOS MOREIRA GOMES", "min": 7.05, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "VIVIAN OLIVEIRA CUNHA", "min": 7.32, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "ROWLEN DE SOUZA SOARES", "min": 12.15, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "FELIPE MARTINS DE ALEXANDRIA", "m": "DAYANA GLEYCE MOREIRA DE SOUZA", "min": 7.9, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "PATRICIA ROCA DOS SANTOS CAMPOS", "min": 11.38, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "JOHNATAS DE MARINS DA SILVA", "min": 6.08, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "VICTOR PACHECO BESSA DE OLIVEIRA", "min": 4.38, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "LUCAS DA SILVA RAYMUNDO", "min": 6.92, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "LEANDRO CAVALCANTI DA SILVA", "min": 8.05, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "ALEX SANTOS SILVA", "m": "VAGNER DA SILVA LIMA", "min": 7.23, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "CLAYTON DOS SANTOS SILVA", "min": 10.63, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "ANTONIO FELIPE DE PAULA NASCIMENTO", "min": 8.47, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "WILLIAM HENRIQUE SOUZA DA ROCHA", "m": "MARCOS DE SOUZA FERNANDES", "min": 11.02, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "BRUNO LAURENTINO DA SILVA", "min": 8.82, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "DIOGO ALVES MORAES MATTOS", "m": "AILTON MARQUES DA CRUZ FILHO", "min": 7.93, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "WELLINGTON DA SILVA CARREIRO", "min": 11.98, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "MARCREY MONTEIRO TAVARES", "m": "EDSON MAURO MOREIRA AMARAL", "min": 10.48, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "WILIAN DOS SANTOS VIANA", "min": 5.8, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "LEONARDO FIGUEIREDO SILVA", "m": "DANIEL RICARDO SOARES ASSUNÇÃO", "min": 11.48, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "VERÔNICA DE SOUZA FIGUEIREDO DE ARAUJO", "min": 7.93, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "GABRIEL SILVA DO ESPIRÍTO SANTO PEREIRA", "m": "MARCOS VINICIUS CONCEICAO DA COSTA", "min": 12.8, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "DIOGO ALVES MORAES MATTOS", "m": "GEOVANA DA SILVA VERNEQUE", "min": 6.35, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "JHONY PEREIRA DO NASCIMENTO", "min": 10.42, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "WILLIAM HENRIQUE SOUZA DA ROCHA", "m": "MAGNO DA SILVA LUSINDO", "min": 9.53, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "RAMON DOS SANTOS BARCELOS", "min": 8.82, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "DAVID RODRIGO SOUZA LIMA", "m": "DIEGO NOVAES DA SILVA", "min": 9.82, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "ELIELTON LOURENA DE MESQUITA", "min": 8.48, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "MARCREY MONTEIRO TAVARES", "m": "RAFAEL GOMES DO AMPARO", "min": 13.02, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "MILLENA DA SILVA RANGEL", "min": 5.15, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "GABRIEL SILVA DO ESPIRÍTO SANTO PEREIRA", "m": "ARTUR SIQUEIRA ROCHA", "min": 7.48, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "LUCAS RIBEIRO CALDEIRA", "min": 4.37, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "LEONARDO FIGUEIREDO SILVA", "m": "JOSÉ ROBERTO BORGES FIUZAS", "min": 10.45, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "JESSICA DE SOUZA DANIEL", "min": 12.15, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "DIOGO ALVES MORAES MATTOS", "m": "OTAVIO GOMES DIZ", "min": 12.12, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "ANDRÉA DE ANDRADE MACHADO", "min": 7.23, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "LEONARDO FERREIRA DE PAULA GONCALVES", "m": "ALMIR DOS SANTOS LAUREANO", "min": 7.18, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "FABRICIO DA FONSECA SOARES", "min": 7.87, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "JOSE LUIZ MOUTINHO DOS SANTOS", "min": 9.63, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "SAMUEL JOSE DA COSTA JUNIOR", "min": 7.28, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "RHUAN LOPES RAIMUNDO", "min": 7.63, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "ALEX SANTOS SILVA", "m": "BEATRIZ PACHECO DE MORAES AZEVEDO", "min": 7.67, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "DIOGO SANTOS LAVAREDA", "min": 5.5, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "ARLANE COUTO DE SOUZA LEANDRO", "min": 6.92, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "PAULO ROBERTO LOURENCO MARINS", "min": 4.45, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "LEONARDO FERREIRA DE PAULA GONCALVES", "m": "GABRIEL SILVA DA CAMARA BRAZAO", "min": 7.45, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "HENRIMAR RAMOS ATAIDE", "min": 11.12, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "LEONARDO WANDERSON DA SILVA", "min": 5.65, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "VICTOR PACHECO BESSA DE OLIVEIRA", "min": 7.98, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "JHORHAN MACHADO SOARES", "min": 8.48, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "ALEX SANTOS SILVA", "m": "ISAIAS AZEREDO DA SILVA SOUZA", "min": 6.85, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "ZELMIR BESSA DE AMORIM", "min": 8.22, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "JOELMA RODRIGUES DA SILVA", "min": 6.48, "cond": "OK", "mot": "Pct Retirado Avaria"}, {"d": "17/09", "c": "LEONARDO FERREIRA DE PAULA GONCALVES", "m": "GABRIEL SOARES MEIRELES", "min": 6.45, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "ALLAN NASCIMENTO DA SILVA REZENDE", "min": 5.92, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "LEONARDO OLIVEIRA ASSIS", "min": 6.17, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "JOSE NILTON DOS SANTOS", "min": 12.4, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "BEATRIZ WENDHAUSEN DE OLIVEIRA", "min": 7.48, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "ALEX SANTOS SILVA", "m": "RAMON DA SILVA LOPES DO ROSARIO", "min": 6.4, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "BRUNA ABEL FRANCISCO", "min": 8.85, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "ANA CLÁUDIA DO NASCIMENTO DE SOUZA", "min": 7.9, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "LUIZ HENRIQUE MARINS DA SILVA", "min": 7.25, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "HIGOR LAURENTINO DA SILVA", "min": 6.93, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "CHARLES ANDERSON DE SOUSA PEREIRA", "min": 7.35, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "DIOGO ALVES MORAES MATTOS", "m": "GUILHERME QUINTANILHA CONCEICAO", "min": 6.75, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "ALEX SANTOS SILVA", "m": "MATHEUS LUIS DA SILVA RAMALHO", "min": 5.63, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "EDSON ROGERIO DOS SANTOS", "min": 13.23, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "MANOEL PEREIRA DOS SANTOS JUNIOR", "min": 7.78, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "ANTONIO MAURICIO FIGUEIREDO BALTHAZAR", "min": 8.6, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "JUAN LAUREANO DE OLIVEIRA", "min": 6.32, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "VALDELIO PASSOS DOS SANTOS", "min": 10.73, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "ALEFF VALERIOTE AREAS DUARTE", "min": 13.5, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "MONIQUE ROCHA GOMES", "min": 7.5, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "MARCOS VINICIUS CONCEICAO DA COSTA", "min": 9.2, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "RAFAEL DE JESUS GOMES", "min": 3.82, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "ALEX SANTOS SILVA", "m": "EDSON DE MOURA MIRANDA JUNIOR", "min": 5.8, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "DIOGO ALVES MORAES MATTOS", "m": "IVAN LESSA LOPES", "min": 6.35, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "LEONARDO DA SILVA COSTA", "min": 11.95, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "FELIPE RODRIGUES DA SILVA", "min": 7.43, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "NATHAN RIOS DA COSTA", "min": 6.58, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "LUCAS CUNHA RODRIGUES", "min": 9.3, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "ALESSANDRA ROCHA DOS SANTOS", "min": 5.72, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "DIOGO ALVES MORAES MATTOS", "m": "LUIS CLAUDIO BASTOS GONCALVES", "min": 8.02, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "LEANDRO GOMES DA MOTTA ALVES", "min": 6.4, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "MICHEL ALVES DA SILVA", "min": 6.62, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "ALEX SANTOS SILVA", "m": "JULIANO DOUGLAS MEDEIROS DA SILVA DUTRA", "min": 7.4, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "ARTHUR BORGES LESSA DE OLIVEIRA", "min": 8.95, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "DIOGO ALVES MORAES MATTOS", "m": "RUAN DE ALMEIDA VEIGA DE ANDRADE", "min": 7.75, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "GUILHERME GOULART RODRIGUES", "min": 7.08, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "KEVEN MATHEUS CÉSAR DE OLIVEIRA", "min": 5.05, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "JOSE RICARDO SILVEIRA GUSMAO JUNIOR", "min": 12.78, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "EDUARDO DE ANDRADE MACEDO", "min": 6.23, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "JESSICA MOREIRA VALERIOTE", "min": 8.53, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "RONNI LOPES DE SOUZA", "min": 10.35, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "DOUGLAS DE SOUZA CARVALHO", "min": 7.82, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "MAYCON VINICIUS RAMOS DOS ANJOS", "min": 31.6, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "MICHELLE BARBOSA DE PAULA", "min": 7.97, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "JOZELI CORDEIRO DE ANDRADE VEIGA", "min": 11.12, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "ALEX SANTOS SILVA", "m": "GABRIEL DA ROCHA MACEDO RAMOS", "min": 7.45, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "DIOGO ALVES MORAES MATTOS", "m": "RIAN DA CONCEICAO PINHEIRO", "min": 7.87, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "KATIA DA SILVA COELHO", "min": 12.5, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "CESAR AUGUSTO ROSA", "min": 8.85, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "JEFFERSON ALVES DA SILVA", "min": 3.95, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "LUIS CLAUDIO HONDA COSTA", "min": 10.3, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "THAÍS CRISTINA COSTA DA SILVA RODRIGUES", "min": 9.93, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "LUCIMAR DE ALCANTARA OLIVEIRA DA FONSECA", "min": 13.98, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "JHONATAS COELHO SILVA", "min": 6.57, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "ALEX SANTOS SILVA", "m": "WENDEL OLIVEIRA PEREIRA", "min": 8.17, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "WESLEY PAULA DA SILVA", "min": 11.32, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "CAIO VINICIUS COUTINHO SOARES", "min": 7.88, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "FABIO SOARES BANDEIRA DOS SANTOS", "min": 5.23, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "DIOGO ALVES MORAES MATTOS", "m": "LUIS FELIPE DO ESPIRITO SANTO RIBEIRO", "min": 8.92, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "PRISCILA CAMPOS DA CONCEICAO", "min": 5.67, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "LUIZ FELIPE DA SILVA CARDOSO", "min": 6.75, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "WESLEI DA CONCEICAO GOMES CRESPO", "min": 6.93, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "MATHEUS DA SILVA NOVAES", "min": 10.55, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "JAILSON FAGNER PEREIRA SILVA", "min": 6.72, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "RENAN DUTRA DE SOUZA", "min": 4.03, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "MATHEUS TEIXEIRA SOUZA", "min": 8.25, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "DANIEL VAGNER SILVA DE FREITAS", "min": 6.02, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "PAULO MAGNO DA COSTA COUTINHO", "min": 5.72, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "RAFAEL ALVARENGA DA SILVA", "min": 6.23, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "FELIPE OLIVEIRA GONCALVES", "min": 5.58, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "ODILON DA SILVA BRANDT", "min": 8.32, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "17/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "CARLOS FELIPE DE OLIVEIRA DA SILVA", "min": 5.67, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "BRENO MAIA AZEVEDO", "min": 5.92, "cond": "OK", "mot": "Não Mapeado"}, {"d": "17/09", "c": "DIOGO ALVES MORAES MATTOS", "m": "CAMILA ESPINDOLA DE OLIVEIRA RODRIGUES", "min": 7.07, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "RHUAN LOPES RAIMUNDO", "min": 6.68, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "LEANDRO TRINDADE DA SILVEIRA", "min": 8.32, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "THAISSA BALDAIA LIANDRO", "m": "MARCOS AURÉLIO FREIRE SILVA DA HORA", "min": 6.43, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "JOAO SOARES LOPES", "min": 8.98, "cond": "OK", "mot": "Erro de Contagem"}, {"d": "18/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "SARA CRISTINA DE ARAÚJO CONSTANTINO ROSA", "min": 4.1, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "THAISSA BALDAIA LIANDRO", "m": "MATHEUS DE ASSIS FERREIRA", "min": 6.72, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "JOSIANE AZEVEDO DE OLIVEIRA", "min": 7.22, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "RICHARD SANTOS DE SOUZA", "m": "DOUGLAS VICENTE DAMACENO", "min": 6.58, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "ROSANE DA CONCEICAO FERREIRA", "min": 8.67, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "ERICA SANTOS DE ARAUJO", "min": 6.0, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "MAYCON DOUGLAS NASCIMENTO FONSECA", "m": "PABLO AURELIO FREITAS DA HORA", "min": 22.07, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "FABIANO ESQUIVEL PEREIRA", "min": 9.78, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "LUAN HENRIQUE DOS SANTOS SOBRAL", "min": 6.42, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "RICHARD SANTOS DE SOUZA", "m": "JOSE CARLOS FERREIRA DE AQUINO", "min": 6.2, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "JOSE RICARDO JESUS DOS SANTOS", "min": 9.53, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "ALINE ALVES PEREIRA", "min": 11.68, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "MARCOS VINICIUS CONCEICAO DA COSTA", "min": 9.22, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "JONATHA FAGUNDES TAVARES", "min": 6.0, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "RONAN DE OLIVEIRA SA", "min": 5.32, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "RICHARD SANTOS DE SOUZA", "m": "SANDRO MACIEL DA SILVA GOMES", "min": 5.78, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "LEONARDO FIGUEIREDO SILVA", "m": "VINICIUS LEITE PEREIRA DE SOUZA", "min": 9.38, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "MAYCON DOUGLAS NASCIMENTO FONSECA", "m": "PRISCILLA GERALDES GOMES TRINDADE", "min": 12.08, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "VICTOR PACHECO BESSA DE OLIVEIRA", "min": 3.17, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "DIOGO ALESSANDRO CUNHA DA SILVA", "min": 7.13, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "LUIZ FELIPE QUARESMA DELMONDES", "min": 7.45, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "JIMMY ALLAN CAVALCANTE DE LIMA", "min": 7.33, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "GABRIEL SOARES MEIRELES", "min": 4.63, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "LETICIA CRISTINA RAMALHO DA COSTA", "min": 13.27, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "DIEGO LUIZ FERREIRA FALCAO", "min": 4.75, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "ANTONIO CESAR BENTO DOS SANTOS", "min": 5.42, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "RAFAEL GOMES DO AMPARO", "min": 6.63, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "LEONARDO FIGUEIREDO SILVA", "m": "CLAYTON DOS SANTOS SILVA", "min": 10.28, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "MARCREY MONTEIRO TAVARES", "m": "VALKER FIGUEIREDO DA SILVA", "min": 10.52, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "GABRIEL SILVA DO ESPIRÍTO SANTO PEREIRA", "m": "JHONY PEREIRA DO NASCIMENTO", "min": 8.83, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "ANDREIA DOS SANTOS MUNIZ MOREIRA", "min": 11.17, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "MARINA PONCE DE ALMEIDA", "min": 7.73, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "RAMON DA SILVA LOPES DO ROSARIO", "min": 8.77, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "LEONARDO OLIVEIRA SILVA", "min": 7.03, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "RICHARD SANTOS DE SOUZA", "m": "VIVIAN OLIVEIRA CUNHA", "min": 5.38, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "CLEITON SANTOS CORDEIRO", "min": 11.23, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "LEONARDO FIGUEIREDO SILVA", "m": "JULIANNA MATARUNA MATTA", "min": 14.18, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "GABRIEL SILVA DO ESPIRÍTO SANTO PEREIRA", "m": "VERÔNICA DE SOUZA FIGUEIREDO DE ARAUJO", "min": 6.35, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "JOSÉ ROBERTO BORGES FIUZAS", "min": 10.13, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "ISAIAS AZEREDO DA SILVA SOUZA", "min": 6.65, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "AILTON MARQUES DA CRUZ FILHO", "min": 8.47, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "RICHARD SANTOS DE SOUZA", "m": "LAIS PEREIRA", "min": 6.9, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "LUAN FERREIRA MALTEZ", "min": 23.48, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "LUCAS NASCIMENTO FONSECA", "min": 8.62, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "DAVID RODRIGO SOUZA LIMA", "m": "PRISCILA CAMPOS DA CONCEICAO", "min": 6.22, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "GEOVANA DA SILVA VERNEQUE", "min": 6.65, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "GABRIEL SILVA DO ESPIRÍTO SANTO PEREIRA", "m": "ROSELENE PEREIRA DO NASCIMENTO", "min": 6.15, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "RICHARD SANTOS DE SOUZA", "m": "IVAN LESSA LOPES", "min": 4.93, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "RUAN DE ALMEIDA VEIGA DE ANDRADE", "min": 9.52, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "JOAO MARCOS HIPOLITO BRITO", "min": 8.67, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "EDSON DA SILVA MANOEL", "min": 7.33, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "PATRICIA ROCA DOS SANTOS CAMPOS", "min": 10.4, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "LEANDRO CAVALCANTI DA SILVA", "min": 5.9, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "MARCREY MONTEIRO TAVARES", "m": "RAMON DOS SANTOS BARCELOS", "min": 7.78, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "WILIAN DOS SANTOS VIANA", "min": 6.38, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "ALOISIO LOPES DE OLIVEIRA", "min": 10.15, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "CARLOS FELIPE DE OLIVEIRA DA SILVA", "min": 3.97, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "RICHARD SANTOS DE SOUZA", "m": "JUAN LAUREANO DE OLIVEIRA", "min": 8.03, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "THAÍS CRISTINA COSTA DA SILVA RODRIGUES", "min": 7.98, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "GABRIEL SILVA DO ESPIRÍTO SANTO PEREIRA", "m": "LEONARDO DA SILVA COSTA", "min": 6.18, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "SAMUEL JOSE DA COSTA JUNIOR", "min": 4.38, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "ANA CLÁUDIA DO NASCIMENTO DE SOUZA", "min": 6.37, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "ALESSANDRA ROCHA DOS SANTOS", "min": 8.2, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "ROWLEN DE SOUZA SOARES", "min": 9.3, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "CHARLES ANDERSON DE SOUSA PEREIRA", "min": 7.67, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "MARCREY MONTEIRO TAVARES", "m": "ANDRÉA DE ANDRADE MACHADO", "min": 8.33, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "RICHARD SANTOS DE SOUZA", "m": "VIVIANE BALBINO MEDEIROS", "min": 7.48, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "LUCIMAR DE ALCANTARA OLIVEIRA DA FONSECA", "min": 3.45, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "GABRIEL SILVA DO ESPIRÍTO SANTO PEREIRA", "m": "DANIEL RICARDO SOARES ASSUNÇÃO", "min": 5.82, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "ZELMIR BESSA DE AMORIM", "min": 9.85, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "RANNA CAROLAYNE SANTOS DA SILVA", "min": 3.3, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "VICTOR PACHECO BESSA DE OLIVEIRA", "min": 6.1, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "KLEBER GOMES DA SILVA", "min": 7.43, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "HENRIMAR RAMOS ATAIDE", "min": 9.53, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "BRUNO LAURENTINO DA SILVA", "min": 4.68, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "RICHARD SANTOS DE SOUZA", "m": "MAGNO DA SILVA LUSINDO", "min": 8.4, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "MARCREY MONTEIRO TAVARES", "m": "MONIQUE ROCHA GOMES", "min": 8.98, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "JOELMA RODRIGUES DA SILVA", "min": 10.0, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "OTAVIO GOMES DIZ", "min": 11.42, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "LEONARDO FERREIRA DE PAULA GONCALVES", "m": "HIGOR LAURENTINO DA SILVA", "min": 6.07, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "DOUGLAS MOREIRA MARINS", "min": 8.03, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "LUCAS RIBEIRO CALDEIRA", "min": 6.22, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "MARCOS VINICIUS CONCEICAO DA COSTA", "min": 11.55, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "MARCREY MONTEIRO TAVARES", "m": "DIOGO SANTOS LAVAREDA", "min": 6.43, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "BRUNA ABEL FRANCISCO", "min": 6.42, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "JOHNATAS DE MARINS DA SILVA", "min": 7.15, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "ARTHUR BORGES LESSA DE OLIVEIRA", "min": 7.47, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "LEONARDO WANDERSON DA SILVA", "min": 3.63, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "MARCREY MONTEIRO TAVARES", "m": "FLAVIANE CABRAL DA SILVA", "min": 4.6, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "JHORHAN MACHADO SOARES", "min": 9.95, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "DIEGO ALVES MOREIRA", "min": 19.37, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "ANTONIO MAURICIO FIGUEIREDO BALTHAZAR", "min": 9.12, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "TIAGO NOGUEIRA BELISARIO", "min": 9.97, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "LEONARDO FERREIRA DE PAULA GONCALVES", "m": "GABRIEL DA ROCHA MACEDO RAMOS", "min": 6.48, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "MARCREY MONTEIRO TAVARES", "m": "PAULO ROBERTO LOURENCO MARINS", "min": 5.38, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "RAFAEL DE JESUS GOMES", "min": 6.22, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "WESLEI DA CONCEICAO GOMES CRESPO", "min": 5.43, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "JOSE NILTON DOS SANTOS", "min": 10.85, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "FELIPE RODRIGUES DA SILVA", "min": 9.75, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "MARCREY MONTEIRO TAVARES", "m": "GABRIEL SILVA DA CAMARA BRAZAO", "min": 5.68, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "LEONARDO FERREIRA DE PAULA GONCALVES", "m": "RONNI LOPES DE SOUZA", "min": 9.18, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "MICHEL ALVES DA SILVA", "min": 5.73, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "EDSON ROGERIO DOS SANTOS", "min": 5.83, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "JULIANO DOUGLAS MEDEIROS DA SILVA DUTRA", "min": 6.18, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "FERNANDA CARDOSO BENEVIDES", "min": 16.37, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "MATHEUS LUIS DA SILVA RAMALHO", "min": 4.7, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "LEONARDO OLIVEIRA ASSIS", "min": 5.72, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "LUIS CLAUDIO HONDA COSTA", "min": 10.13, "cond": "NOK", "mot": "Erro de Contagem"}, {"d": "18/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "LEANDRO GOMES DA MOTTA ALVES", "min": 5.87, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "NATHAN RIOS DA COSTA", "min": 8.32, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "MAYCON VINICIUS RAMOS DOS ANJOS", "min": 12.73, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "MICHELLE BARBOSA DE PAULA", "min": 8.35, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "GUILHERME GOULART RODRIGUES", "min": 13.95, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "KEVEN MATHEUS CÉSAR DE OLIVEIRA", "min": 4.85, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "ALEFF VALERIOTE AREAS DUARTE", "min": 7.28, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "LEONARDO FERREIRA DE PAULA GONCALVES", "m": "JHONATAS COELHO SILVA", "min": 6.63, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "MARCREY MONTEIRO TAVARES", "m": "JOZELI CORDEIRO DE ANDRADE VEIGA", "min": 8.48, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "CAMILA ESPINDOLA DE OLIVEIRA RODRIGUES", "min": 4.93, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "CESAR AUGUSTO ROSA", "min": 11.63, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "WENDEL OLIVEIRA PEREIRA", "min": 10.57, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "LUIS FELIPE DO ESPIRITO SANTO RIBEIRO", "min": 7.57, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "LEONARDO FERREIRA DE PAULA GONCALVES", "m": "RENAN DUTRA DE SOUZA", "min": 6.32, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "FABIO SOARES BANDEIRA DOS SANTOS", "min": 6.0, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "CARLOS EDUARDO DA SILVA TRAVASSOS", "min": 4.52, "cond": "OK", "mot": "Erro de Contagem"}, {"d": "18/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "DOUGLAS DE SOUZA CARVALHO", "min": 11.72, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "WESLEY PAULA DA SILVA", "min": 5.12, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "JAILSON FAGNER PEREIRA SILVA", "min": 7.05, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "MARCREY MONTEIRO TAVARES", "m": "JOSE RICARDO SILVEIRA GUSMAO JUNIOR", "min": 9.58, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "JESSICA MOREIRA VALERIOTE", "min": 16.92, "cond": "NOK", "mot": "Erro de Contagem"}, {"d": "18/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "MATHEUS DA SILVA NOVAES", "min": 8.45, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "ALEX DOUGLAS COUTINHO SOARES", "min": 6.47, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "18/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "FELIPE OLIVEIRA GONCALVES", "min": 6.75, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "PAULO MAGNO DA COSTA COUTINHO", "min": 5.53, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "DANIEL VAGNER SILVA DE FREITAS", "min": 3.35, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "LEONARDO FERREIRA DE PAULA GONCALVES", "m": "MATHEUS TEIXEIRA SOUZA", "min": 6.53, "cond": "OK", "mot": "Não Mapeado"}, {"d": "18/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "RAFAEL ALVARENGA DA SILVA", "min": 4.35, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "GRAZIELE PEREIRA DE SOUZA", "min": 5.85, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "ANTONIO MAURICIO FIGUEIREDO BALTHAZAR", "min": 10.45, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "MATHEUS DE ASSIS FERREIRA", "min": 4.47, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "ALEX SANTOS SILVA", "m": "IZAC FERNANDES SILVA", "min": 6.7, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "BEATRIZ DE JESUS MONTEIRO DE SOUZA", "min": 8.93, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "ANDREIA DOS SANTOS MUNIZ MOREIRA", "min": 8.07, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "ALEX SANTOS SILVA", "m": "RONAN DE OLIVEIRA SA", "min": 7.47, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "ISRAEL FERREIRA ACARIO", "min": 6.18, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "DIEGO ALVES MOREIRA", "min": 12.65, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "RICHARD SANTOS DE SOUZA", "m": "RICARDO MAURENTE DA ROCHA", "min": 6.35, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "WAGNER NICOLINI DE OLIVEIRA", "min": 9.13, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "RICHARD SANTOS DE SOUZA", "m": "VAGNER GENESIO DE FREITAS", "min": 7.85, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "LEONARDO FIGUEIREDO SILVA", "m": "JONATHA FAGUNDES TAVARES", "min": 7.33, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "JOAO VICTOR DOS SANTOS ARCANJO", "min": 9.67, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "MATHEUS LUIS DA SILVA RAMALHO", "min": 6.72, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "RICHARD SANTOS DE SOUZA", "m": "ANA RITA SILVA DE CARVALHO", "min": 8.17, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "FERNANDA LANDIM NUNES", "min": 12.57, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "LEONARDO FIGUEIREDO SILVA", "m": "CLAYTON DOS SANTOS SILVA", "min": 13.12, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "JHONATAN FONSECA GUIMARAES", "min": 9.23, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "RICHARD SANTOS DE SOUZA", "m": "JOSE ROBSON SANTOS MONTEIRO", "min": 9.38, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "THAINA SILVA DA CONCEICAO", "min": 10.3, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "VIVIAN OLIVEIRA CUNHA", "min": 11.3, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "MARCREY MONTEIRO TAVARES", "m": "LUCAS SIQUEIRA ROCHA", "min": 11.62, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "ROSANE DA CONCEICAO FERREIRA", "min": 7.4, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "ALEX SANTOS SILVA", "m": "VERÔNICA DE SOUZA FIGUEIREDO DE ARAUJO", "min": 6.48, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "PATRICIA ROCA DOS SANTOS CAMPOS", "min": 8.45, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "ERICA SANTOS DE ARAUJO", "min": 4.93, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "RAFAEL LUIS RIBEIRO CRISTOVAM", "min": 8.42, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "ANTONIO FELIPE DE PAULA NASCIMENTO", "min": 8.02, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "VICTOR PACHECO BESSA DE OLIVEIRA", "min": 4.55, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "VINICIUS LEITE PEREIRA DE SOUZA", "min": 6.62, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "LEANDRO TRINDADE DA SILVEIRA", "min": 9.05, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "VITOR GRISOSTENS DOS SANTOS", "m": "SANDRO MACIEL DA SILVA GOMES", "min": 12.65, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "LETICIA CRISTINA RAMALHO DA COSTA", "min": 8.77, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "PRISCILLA GERALDES GOMES TRINDADE", "min": 9.53, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "JOAO MARCOS HIPOLITO BRITO", "min": 7.33, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "RAMON DOS SANTOS BARCELOS", "min": 7.53, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "ALEX SANTOS SILVA", "m": "ROWLEN DE SOUZA SOARES", "min": 8.07, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "RHUAN LOPES RAIMUNDO", "min": 7.4, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "PATRYCK ROGER SOUZA PINTO", "m": "JIMMY ALLAN CAVALCANTE DE LIMA", "min": 6.87, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "LEONARDO WANDERSON DA SILVA", "min": 5.9, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "EDSON MAURO MOREIRA AMARAL", "min": 11.08, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "LUAN FERREIRA MALTEZ", "min": 8.37, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "MARINA PONCE DE ALMEIDA", "min": 9.68, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "JOSÉ ROBERTO BORGES FIUZAS", "min": 10.47, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "ALEX SANTOS SILVA", "m": "ANTONIO CESAR BENTO DOS SANTOS", "min": 6.75, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "CAROLINE BIEBE CHAGAS", "min": 6.27, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "MARCOS VINICIUS CONCEICAO DA COSTA", "min": 8.05, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "ELIELTON LOURENA DE MESQUITA", "min": 4.7, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "ROSELENE PEREIRA DO NASCIMENTO", "min": 6.18, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "VALKER FIGUEIREDO DA SILVA", "min": 10.37, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "VITOR GRISOSTENS DOS SANTOS", "m": "ALOISIO LOPES DE OLIVEIRA", "min": 14.58, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "SERGIO SANTOS DO NASCIMENTO", "min": 18.32, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "FABIANO ESQUIVEL PEREIRA", "min": 10.12, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "SAMUEL JOSE DA COSTA JUNIOR", "min": 5.15, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "VAGNER DA SILVA LIMA", "min": 6.58, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "OTAVIO GOMES DIZ", "min": 10.62, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "DIOGO ALESSANDRO CUNHA DA SILVA", "min": 7.22, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "ALEX SANTOS SILVA", "m": "ALLAN NASCIMENTO DA SILVA REZENDE", "min": 4.78, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "WELLINGTON DA SILVA CARREIRO", "min": 6.9, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "ANDRE GONCALVES DA SILVA", "min": 7.55, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "VITOR GRISOSTENS DOS SANTOS", "m": "IGOR DA CONCEICAO CARVALHO VIEIRA", "min": 8.33, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "CAROLINA CARNEIRO DOS SANTOS", "m": "LEANDRO CAVALCANTI DA SILVA", "min": 6.82, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "GEOVANA OLIVEIRA  SILVA", "min": 8.63, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "ISAIAS AZEREDO DA SILVA SOUZA", "min": 5.33, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "DOUGLAS PEIXOTO DA SILVA", "min": 8.12, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "ALESSANDRO PEREIRA ROHAN", "min": 9.43, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "ALEX SANTOS SILVA", "m": "BRUNO LAURENTINO DA SILVA", "min": 8.57, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "JOAO BAPTISTA MAGESTE", "min": 5.28, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "JOSE LUIZ MOUTINHO DOS SANTOS", "min": 6.08, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "DANIEL RICARDO SOARES ASSUNÇÃO", "min": 6.85, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "MARCOS DE SOUZA FERNANDES", "min": 10.0, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "VITOR GRISOSTENS DOS SANTOS", "m": "GABRIEL CLECIANO FERNANDES MONTEIRO", "min": 11.83, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "DIOGO SANTOS LAVAREDA", "min": 8.27, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "DIEGO LUIZ FERREIRA FALCAO", "min": 7.43, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "JOELMA RODRIGUES DA SILVA", "min": 1.03, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "VICTOR PACHECO BESSA DE OLIVEIRA", "min": 6.48, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "JOHNATAS DE MARINS DA SILVA", "min": 8.1, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "ALEX SANTOS SILVA", "m": "DOUGLAS MOREIRA MARINS", "min": 10.12, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "MARCOS VINICIUS CONCEICAO DA COSTA", "min": 9.08, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "WILIAN DOS SANTOS VIANA", "min": 5.3, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "ANTONIO MAURICIO FIGUEIREDO BALTHAZAR", "min": 10.0, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "MAGNO DA SILVA LUSINDO", "min": 8.95, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "ANDRÉA DE ANDRADE MACHADO", "min": 9.33, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "ANDRE DOS SANTOS ROCHA", "min": 7.3, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "VITOR GRISOSTENS DOS SANTOS", "m": "EDUARDO DE ANDRADE MACEDO", "min": 14.15, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "RAFAEL GOMES DO AMPARO", "min": 6.57, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "ARTHUR BORGES LESSA DE OLIVEIRA", "min": 6.42, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "FLAVIANE CABRAL DA SILVA", "min": 3.27, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "ALEX SANTOS SILVA", "m": "JULIANNA MATARUNA MATTA", "min": 7.0, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "GABRIEL SILVA DA CAMARA BRAZAO", "min": 5.65, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "LEONARDO DA SILVA COSTA", "min": 9.47, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "FERNANDA CARDOSO BENEVIDES", "min": 8.83, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "HIGOR LAURENTINO DA SILVA", "min": 5.13, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "RAFAEL DE JESUS GOMES", "min": 6.0, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "LEANDRO GOMES DA MOTTA ALVES", "min": 4.22, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "EDSON ROGERIO DOS SANTOS", "min": 6.13, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "MATEUS SANTOS LEMOS", "min": 7.37, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "ALEX SANTOS SILVA", "m": "MATHEUS LUIS DA SILVA RAMALHO", "min": 3.65, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "IVAN LESSA LOPES", "min": 8.4, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "ALESSANDRA ROCHA DOS SANTOS", "min": 5.98, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "LUCIMAR DE ALCANTARA OLIVEIRA DA FONSECA", "min": 4.17, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "ZELMIR BESSA DE AMORIM", "min": 8.3, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "GEOVANA DA SILVA VERNEQUE", "min": 7.13, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "MAYCON VINICIUS RAMOS DOS ANJOS", "min": 10.9, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "DIOGO ALVES MORAES MATTOS", "m": "JHONATAS COELHO SILVA", "min": 18.3, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "THAÍS CRISTINA COSTA DA SILVA RODRIGUES", "min": 9.7, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "ALEX SANTOS SILVA", "m": "WENDEL OLIVEIRA PEREIRA", "min": 6.97, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "PAULO MAGNO DA COSTA COUTINHO", "min": 2.7, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "FABIO SOARES BANDEIRA DOS SANTOS", "min": 6.03, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "MICHELLE BARBOSA DE PAULA", "min": 7.38, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "KAIKY CORDEIRO MARINHO", "min": 4.73, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "RONNI LOPES DE SOUZA", "min": 6.62, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "CARLOS FELIPE DE OLIVEIRA DA SILVA", "min": 3.93, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "ALEX SANTOS SILVA", "m": "AMANDA ESPINDOLA DE OLIVEIRA RODRIGUES", "min": 4.47, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "DIOGO ALVES MORAES MATTOS", "m": "LUCIENE FARIA SOARES", "min": 5.63, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "FELIPE OLIVEIRA GONCALVES", "min": 4.43, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "CAIO VINICIUS COUTINHO SOARES", "min": 7.42, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "ALEX SANTOS SILVA", "m": "ALEX DOUGLAS COUTINHO SOARES", "min": 3.78, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "NATHAN RIOS DA COSTA", "min": 6.07, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "LEONARDO OLIVEIRA ASSIS", "min": 8.7, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "JEFFERSON ALVES DA SILVA", "min": 5.48, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "KATIA DA SILVA COELHO", "min": 10.18, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "JUAN LAUREANO DE OLIVEIRA", "min": 11.27, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "DIOGO ALVES MORAES MATTOS", "m": "CARLOS EDUARDO DA SILVA TRAVASSOS", "min": 5.95, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "LUCAS RIBEIRO CALDEIRA", "min": 6.97, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "DANIEL VAGNER SILVA DE FREITAS", "min": 6.88, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "ALEX SANTOS SILVA", "m": "TIAGO NOGUEIRA BELISARIO", "min": 11.05, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "JOSE RICARDO SILVEIRA GUSMAO JUNIOR", "min": 11.0, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "GABRIEL DA ROCHA MACEDO RAMOS", "min": 10.05, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "RUAN DE ALMEIDA VEIGA DE ANDRADE", "min": 11.55, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "GUILHERME GOULART RODRIGUES", "min": 11.87, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "LUIS FELIPE DO ESPIRITO SANTO RIBEIRO", "min": 10.55, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "DIOGO ALVES MORAES MATTOS", "m": "EDSON DE MOURA MIRANDA JUNIOR", "min": 9.38, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "FELIPE RODRIGUES DA SILVA", "min": 13.6, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "RAFAEL ALVARENGA DA SILVA", "min": 9.1, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "MARIA EDUARDA MENDES VIANA", "m": "JULIANO DOUGLAS MEDEIROS DA SILVA DUTRA", "min": 9.13, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "PHAMELLA DE ABREU FERREIRA", "m": "WESLEY PAULA DA SILVA", "min": 8.17, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "MARCIA REGINA LOPES GAGLIANO", "m": "CESAR AUGUSTO ROSA", "min": 9.32, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "KENYA NUNES DE OLIVEIRA", "m": "DOUGLAS DE SOUZA CARVALHO", "min": 8.52, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "ALEX SANTOS SILVA", "m": "JESSICA MOREIRA VALERIOTE", "min": 12.43, "cond": "NOK", "mot": "Pct Retirado Avaria"}, {"d": "19/09", "c": "INGRID IOHANA CRISTINE LOPES DA COSTA", "m": "JAILSON FAGNER PEREIRA SILVA", "min": 10.38, "cond": "NOK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "DIOGO ALVES MORAES MATTOS", "m": "MATHEUS DA SILVA NOVAES", "min": 8.43, "cond": "OK", "mot": "Pct Retirado (Fora de Rota)"}, {"d": "19/09", "c": "CRISLAINE DA SILVA MARTINS GUSTAVO", "m": "MICHEL ALVES DA SILVA", "min": 6.48, "cond": "OK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "JENNYFFER FERREIRA DE OLIVEIRA", "m": "RANNA CAROLAYNE SANTOS DA SILVA", "min": 16.25, "cond": "NOK", "mot": "Não Mapeado"}, {"d": "19/09", "c": "SILVIA DE OLIVEIRA DA SILVA SIMPLICIO", "m": "ODILON DA SILVA BRANDT", "min": 7.5, "cond": "OK", "mot": "Não Mapeado"}];
+
+    let chartDiarioInst = null;
+    let chartRoscaInst = null;
+    let chartMotivosInst = null;
+    let chartMotoristasInst = null;
+
+    // Função utilitária para converter minutos decimais em MM:SS
+    function formatarMinutosSegundos(minDecimal) {
+      if (!minDecimal || isNaN(minDecimal) || minDecimal === 0) return "00:00";
+      const m = Math.floor(minDecimal);
+      const s = Math.round((minDecimal - m) * 60);
+      return String(m).padStart(2, '0') + ":" + String(s).padStart(2, '0');
+    }
+
+    // FUNÇÃO PRINCIPAL DE FILTRAGEM E ATUALIZAÇÃO
+    function aplicarFiltros() {
+      const filtroData = document.getElementById('filtroData').value;
+      const filtroCond = document.getElementById('filtroCondicao').value;
+
+      // Filtrar registros
+      const dadosFiltrados = RAW_DATA.filter(item => {
+        const bateuData = (filtroData === 'todos') || (item.d === filtroData);
+        const bateuCond = (filtroCond === 'todos') || (item.cond === filtroCond);
+        return bateuData && bateuCond;
+      });
+
+      atualizarDashboard(dadosFiltrados, filtroData, filtroCond);
+    }
+
+    function resetarFiltros() {
+      document.getElementById('filtroData').value = 'todos';
+      document.getElementById('filtroCondicao').value = 'todos';
+      document.getElementById('buscaColaborador').value = '';
+      aplicarFiltros();
+    }
+
+    // ATUALIZAÇÃO COMPLETA DE KPIS, GRÁFICOS E TABELAS
+    function atualizarDashboard(dados, filtroData, filtroCond) {
+      const total = dados.length;
+      
+      // 1. KPIs Gerais
+      if (total === 0) {
+        document.getElementById('kpiTempoMedio').innerText = "00:00";
+        document.getElementById('kpiTempoDecimal').innerText = "0.00 min";
+        document.getElementById('kpiAderencia').innerText = "0.0%";
+        document.getElementById('kpiRotasOk').innerText = "0 rotas OK";
+        document.getElementById('kpiNok').innerText = "0";
+        document.getElementById('kpiNokPct').innerText = "(0.0%)";
+        document.getElementById('kpiTotal').innerText = "0";
+        return;
+      }
+
+      const somaMin = dados.reduce((acc, cur) => acc + cur.min, 0);
+      const mediaMin = somaMin / total;
+      const okCount = dados.filter(d => d.cond === 'OK').length;
+      const nokCount = dados.filter(d => d.cond === 'NOK').length;
+      const aderencia = (okCount / total) * 100;
+
+      // Atualizar textos dos KPIs
+      document.getElementById('kpiTempoMedio').innerText = formatarMinutosSegundos(mediaMin);
+      document.getElementById('kpiTempoDecimal').innerText = mediaMin.toFixed(2) + " minutos médios";
+      
+      const diffMeta = mediaMin - 10.0;
+      const deltaEl = document.getElementById('kpiDeltaMeta');
+      if (diffMeta <= 0) {
+        deltaEl.innerText = "▼ " + formatarMinutosSegundos(Math.abs(diffMeta)) + " vs Meta";
+        deltaEl.className = "text-xs font-bold text-emerald-400";
+      } else {
+        deltaEl.innerText = "▲ +" + formatarMinutosSegundos(diffMeta) + " Acima";
+        deltaEl.className = "text-xs font-bold text-rose-400";
+      }
+
+      document.getElementById('kpiAderencia').innerText = aderencia.toFixed(1) + "%";
+      document.getElementById('kpiRotasOk').innerText = okCount + " rotas OK";
+      document.getElementById('kpiNok').innerText = nokCount;
+      document.getElementById('kpiNokPct').innerText = "(" + ((nokCount / total) * 100).toFixed(1) + "%)";
+      document.getElementById('kpiTotal').innerText = total;
+      document.getElementById('kpiSubPeriodo').innerText = filtroData === 'todos' ? "Semana (15/09 a 19/09)" : "Dia " + filtroData;
+
+      // 2. Gráfico 1: Acompanhamento Diário
+      atualizarGraficoDiario(dados);
+
+      // 3. Gráfico 2: Rosca de Conformidade
+      atualizarGraficoRosca(okCount, nokCount, total);
+
+      // 4. Gráfico 3: Motivos de Ofensores
+      atualizarGraficoMotivos(dados);
+
+      // 5. Gráfico 4: Top Motoristas
+      atualizarGraficoMotoristas(dados);
+
+      // 6. Tabela de Colaboradores
+      atualizarTabelaColaboradores(dados);
+    }
+
+    // 1. GRÁFICO DIÁRIO (COM RÓTULOS VISÍVEIS)
+    function atualizarGraficoDiario(dados) {
+      const diasPossiveis = ['15/09', '16/09', '17/09', '18/09', '19/09'];
+      const medias = [];
+      const rotasDia = [];
+
+      diasPossiveis.forEach(dia => {
+        const doDia = dados.filter(d => d.d === dia);
+        if (doDia.length > 0) {
+          const med = doDia.reduce((a, b) => a + b.min, 0) / doDia.length;
+          medias.push(Number(med.toFixed(2)));
+          rotasDia.push(doDia.length);
+        } else {
+          medias.push(null);
+          rotasDia.push(0);
+        }
+      });
+
+      // Atualizar mini cards do rodapé diário
+      const resumoContainer = document.getElementById('cardResumoDiario');
+      resumoContainer.innerHTML = '';
+      diasPossiveis.forEach((dia, idx) => {
+        const m = medias[idx];
+        const r = rotasDia[idx];
+        resumoContainer.innerHTML += `
+          <div class="bg-slate-900/60 p-2 rounded-xl border border-slate-800">
+            <span class="text-[10px] text-slate-400 font-bold block">${dia}</span>
+            <span class="text-sm font-black ${m && m > 10 ? 'text-rose-400' : 'text-white'} block">${m !== null ? m.toFixed(2) + 'm' : '-'}</span>
+            <span class="text-[10px] text-slate-400 block">${r} rotas</span>
+          </div>
+        `;
+      });
+
+      if (chartDiarioInst) chartDiarioInst.destroy();
+
+      const ctx = document.getElementById('chartDiario').getContext('2d');
+      chartDiarioInst = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: diasPossiveis,
+          datasets: [
+            {
+              label: 'Tempo Médio (min)',
+              data: medias,
+              borderColor: '#EE4D2D',
+              backgroundColor: 'rgba(238, 77, 45, 0.12)',
+              borderWidth: 3,
+              fill: true,
+              tension: 0.3,
+              pointBackgroundColor: '#EE4D2D',
+              pointBorderColor: '#FFFFFF',
+              pointBorderWidth: 2,
+              pointRadius: 6,
+              pointHoverRadius: 8,
+              datalabels: {
+                align: 'top',
+                offset: 6,
+                color: '#FFFFFF',
+                font: { weight: 'bold', size: 12, family: 'Plus Jakarta Sans' },
+                backgroundColor: 'rgba(238, 77, 45, 0.85)',
+                borderRadius: 4,
+                padding: { top: 2, bottom: 2, left: 6, right: 6 },
+                formatter: (value) => value !== null ? value.toFixed(2) + 'm' : ''
+              }
+            },
+            {
+              label: 'Meta SLA (10 min)',
+              data: [10, 10, 10, 10, 10],
+              borderColor: '#EF4444',
+              borderDash: [6, 6],
+              borderWidth: 1.5,
+              pointRadius: 0,
+              fill: false,
+              datalabels: { display: false }
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { top: 25, right: 15, left: 10, bottom: 5 } },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.dataset.label}: ${ctx.raw !== null ? ctx.raw + ' min (' + formatarMinutosSegundos(ctx.raw) + ')' : 'Sem dados'}`
+              }
+            }
+          },
+          scales: {
+            y: {
+              min: 6,
+              max: 11.5,
+              grid: { color: 'rgba(255, 255, 255, 0.06)' },
+              ticks: { color: '#94A3B8', font: { size: 11 }, callback: v => v + 'm' }
+            },
+            x: {
+              grid: { display: false },
+              ticks: { color: '#CBD5E1', font: { weight: '600' } }
+            }
+          }
+        }
+      });
+    }
+
+    // 2. GRÁFICO ROSCA
+    function atualizarGraficoRosca(ok, nok, total) {
+      document.getElementById('donutTotal').innerText = total;
+      document.getElementById('donutOkVal').innerText = ok + " (" + ((ok / total) * 100).toFixed(1) + "%)";
+      document.getElementById('donutNokVal').innerText = nok + " (" + ((nok / total) * 100).toFixed(1) + "%)";
+
+      if (chartRoscaInst) chartRoscaInst.destroy();
+
+      const ctx = document.getElementById('chartRosca').getContext('2d');
+      chartRoscaInst = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['OK (&le; 10m)', 'NOK (> 10m)'],
+          datasets: [{
+            data: [ok, nok],
+            backgroundColor: ['#10B981', '#EE4D2D'],
+            borderWidth: 0,
+            hoverOffset: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '74%',
+          plugins: {
+            legend: { display: false },
+            datalabels: {
+              color: '#FFFFFF',
+              font: { weight: 'bold', size: 12 },
+              formatter: (val, ctx) => {
+                const pct = ((val / total) * 100).toFixed(1);
+                return pct > 10 ? pct + '%' : '';
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // 3. GRÁFICO DE MOTIVOS (COM NÚMERO IMPRESSO NAS BARRAS)
+    function atualizarGraficoMotivos(dados) {
+      const contagem = {};
+      dados.forEach(d => {
+        const m = d.mot || 'Não Mapeado';
+        contagem[m] = (contagem[m] || 0) + 1;
+      });
+
+      // Ordenar por volume decrescente
+      const motivosOrdenados = Object.keys(contagem)
+        .map(k => ({ mot: k, qtd: contagem[k] }))
+        .sort((a, b) => b.qtd - a.qtd);
+
+      const labels = motivosOrdenados.map(m => m.mot);
+      const valores = motivosOrdenados.map(m => m.qtd);
+
+      if (chartMotivosInst) chartMotivosInst.destroy();
+
+      const ctx = document.getElementById('chartMotivos').getContext('2d');
+      chartMotivosInst = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Ocorrências',
+            data: valores,
+            backgroundColor: '#3B82F6',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { right: 40 } },
+          plugins: {
+            legend: { display: false },
+            datalabels: {
+              anchor: 'end',
+              align: 'right',
+              color: '#93C5FD',
+              font: { weight: 'bold', size: 11 },
+              formatter: (val) => val
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#94A3B8' }
+            },
+            y: {
+              grid: { display: false },
+              ticks: { color: '#E2E8F0', font: { size: 11 } }
+            }
+          }
+        }
+      });
+    }
+
+    // 4. GRÁFICO MOTORISTAS (COM TEMPO IMPRESSO NAS BARRAS)
+    function atualizarGraficoMotoristas(dados) {
+      const mapa = {};
+      dados.forEach(d => {
+        if (!mapa[d.m]) mapa[d.m] = { soma: 0, count: 0 };
+        mapa[d.m].soma += d.min;
+        mapa[d.m].count += 1;
+      });
+
+      const lista = Object.keys(mapa).map(nome => ({
+        nome: nome,
+        media: mapa[nome].soma / mapa[nome].count,
+        rotas: mapa[nome].count
+      }));
+
+      lista.sort((a, b) => b.media - a.media);
+      const top10 = lista.slice(0, 10);
+
+      const labels = top10.map(t => t.nome);
+      const valores = top10.map(t => Number(t.media.toFixed(2)));
+
+      if (chartMotoristasInst) chartMotoristasInst.destroy();
+
+      const ctx = document.getElementById('chartMotoristas').getContext('2d');
+      chartMotoristasInst = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Tempo Médio (min)',
+            data: valores,
+            backgroundColor: valores.map(v => v > 10 ? '#EE4D2D' : '#10B981'),
+            borderRadius: 6
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { right: 55 } },
+          plugins: {
+            legend: { display: false },
+            datalabels: {
+              anchor: 'end',
+              align: 'right',
+              color: '#FFFFFF',
+              font: { weight: 'bold', size: 10 },
+              formatter: (val) => formatarMinutosSegundos(val) + " (" + val + "m)"
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#94A3B8', callback: v => v + 'm' }
+            },
+            y: {
+              grid: { display: false },
+              ticks: { color: '#CBD5E1', font: { size: 10 } }
+            }
+          }
+        }
+      });
+    }
+
+    // 5. TABELA DE COLABORADORES
+    let listaColaboradoresCache = [];
+
+    function atualizarTabelaColaboradores(dados) {
+      const mapa = {};
+      dados.forEach(d => {
+        if (!mapa[d.c]) mapa[d.c] = { ok: 0, nok: 0, somaMin: 0, total: 0 };
+        mapa[d.c].total += 1;
+        mapa[d.c].somaMin += d.min;
+        if (d.cond === 'OK') mapa[d.c].ok += 1;
+        else mapa[d.c].nok += 1;
+      });
+
+      listaColaboradoresCache = Object.keys(mapa).map(nome => {
+        const item = mapa[nome];
+        const med = item.somaMin / item.total;
+        const ader = (item.ok / item.total) * 100;
+        return {
+          nome: nome,
+          total: item.total,
+          mediaFmt: formatarMinutosSegundos(med),
+          mediaDec: med.toFixed(2),
+          ok: item.ok,
+          nok: item.nok,
+          aderencia: ader.toFixed(1)
+        };
+      }).sort((a, b) => b.total - a.total);
+
+      filtrarTabela();
+    }
+
+    function filtrarTabela() {
+      const termo = document.getElementById('buscaColaborador').value.toLowerCase();
+      const filtrados = listaColaboradoresCache.filter(c => c.nome.toLowerCase().includes(termo));
+
+      const tbody = document.getElementById('tabelaColaboradores');
+      tbody.innerHTML = '';
+
+      if (filtrados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="py-6 text-center text-slate-500">Nenhum colaborador encontrado</td></tr>`;
+        return;
+      }
+
+      filtrados.forEach(c => {
+        const isGood = parseFloat(c.aderencia) >= 70;
+        const statusBadge = isGood
+          ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Conforme</span>`
+          : `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">Atenção</span>`;
+
+        const tr = `
+          <tr class="hover:bg-slate-800/40 transition-colors">
+            <td class="py-3 px-4 font-semibold text-white">${c.nome}</td>
+            <td class="py-3 px-4 text-center font-bold">${c.total}</td>
+            <td class="py-3 px-4 text-center font-bold text-orange-400">${c.mediaFmt}</td>
+            <td class="py-3 px-4 text-center text-slate-400">${c.mediaDec}m</td>
+            <td class="py-3 px-4 text-center text-emerald-400">${c.ok}</td>
+            <td class="py-3 px-4 text-center text-rose-400">${c.nok}</td>
+            <td class="py-3 px-4 text-center font-bold ${parseFloat(c.aderencia) >= 70 ? 'text-emerald-400' : 'text-rose-400'}">${c.aderencia}%</td>
+            <td class="py-3 px-4 text-center">${statusBadge}</td>
+          </tr>
+        `;
+        tbody.innerHTML += tr;
+      });
+    }
+
+    // INICIALIZAÇÃO AUTOMÁTICA
+    window.addEventListener('DOMContentLoaded', () => {
+      aplicarFiltros();
+    });
+  </script>
+</body>
+</html>
